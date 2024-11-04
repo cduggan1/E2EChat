@@ -1,14 +1,20 @@
 package org.example;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 
 public class PacketSender {
 
-    private final OutputStream outputStream;
+    private final DatagramSocket socket;
+    private final InetAddress address;
+    private final int port;
 
-    public PacketSender(OutputStream outputStream) {
-        this.outputStream = outputStream;
+    public PacketSender(DatagramSocket socket, InetAddress address, int port) {
+        this.socket = socket;
+        this.address = address;
+        this.port = port;
     }
 
     public void sendHello(long senderId, long destinationId, String messageContent) throws IOException {
@@ -31,9 +37,9 @@ public class PacketSender {
         sendMessage(errorMessage);
     }
 
-    public void sendMessage(Message message) throws IOException {
-        byte[] packet = message.toBytes();
-        outputStream.write(packet);
-        outputStream.flush();
+    private void sendMessage(Message message) throws IOException {
+        byte[] packetData = message.toBytes();
+        DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);
+        socket.send(packet);
     }
 }
