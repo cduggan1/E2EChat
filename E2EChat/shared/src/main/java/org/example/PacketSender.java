@@ -27,14 +27,13 @@ public class PacketSender {
         sendMessage(ackMessage);
     }
 
+    public void sendKeyExchange(long senderId, long destinationId, byte[] publicKey) throws IOException {
+        Message keyExchangeMessage = new Message(Message.PacketType.KEY_EXCHANGE, senderId, destinationId, publicKey);
+        sendMessage(keyExchangeMessage);
+    }
     public void sendMessage(long senderId, long destinationId, String messageContent) throws IOException {
         Message messagePacket = new Message(Message.PacketType.MESSAGE, senderId, destinationId, messageContent);
         sendMessage(messagePacket);
-    }
-
-    public void sendError(long senderId, long destinationId, String messageContent) throws IOException {
-        Message errorMessage = new Message(Message.PacketType.ERROR, senderId, destinationId, messageContent);
-        sendMessage(errorMessage);
     }
 
     private void sendMessage(Message message) throws IOException {

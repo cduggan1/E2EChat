@@ -9,7 +9,8 @@ public class Message {
         HELLO((byte) 1),
         ACK((byte) 2),
         MESSAGE((byte) 3),
-        ERROR((byte) 4);
+        ERROR((byte) 4),
+        KEY_EXCHANGE((byte) 5);
 
         private final byte type;
 
@@ -34,8 +35,9 @@ public class Message {
     private final PacketType type;
     private final long senderId;
     private final long destinationId;
-    private byte[] messageContent;
+    private final byte[] messageContent;
 
+    // Constructor for String content
     public Message(PacketType type, long senderId, long destinationId, String messageContent) {
         this.type = type;
         this.senderId = senderId;
@@ -43,6 +45,7 @@ public class Message {
         this.messageContent = messageContent.getBytes(StandardCharsets.UTF_8);
     }
 
+    // Constructor for byte array content
     public Message(PacketType type, long senderId, long destinationId, byte[] messageContent) {
         this.type = type;
         this.senderId = senderId;
@@ -78,12 +81,12 @@ public class Message {
         return this.type == PacketType.ERROR;
     }
 
-    public String getMessageContentAsString() {
-        return new String(messageContent, StandardCharsets.UTF_8);
+    public boolean isKeyExchange() {
+        return this.type == PacketType.KEY_EXCHANGE;
     }
 
-    public void setMessageContentFromString(String content) {
-        this.messageContent = content.getBytes(StandardCharsets.UTF_8);
+    public String getMessageContentAsString() {
+        return new String(messageContent, StandardCharsets.UTF_8);
     }
 
     public byte[] getMessageContentAsBytes() {
@@ -92,39 +95,34 @@ public class Message {
 
     public byte[] toBytes() {
         ByteBuffer buffer = ByteBuffer.allocate(1 + 8 + 8 + 4 + messageContent.length);
-
         buffer.put(type.getType());
         buffer.putLong(senderId);
         buffer.putLong(destinationId);
-
         buffer.putInt(messageContent.length);
-
         buffer.put(messageContent);
-
         return buffer.array();
     }
 
     public static Message fromBytes(byte[] packet) {
         ByteBuffer buffer = ByteBuffer.wrap(packet);
-
         byte typeByte = buffer.get();
         PacketType type = PacketType.fromByte(typeByte);
         long senderId = buffer.getLong();
         long destinationId = buffer.getLong();
         int length = buffer.getInt();
-
         byte[] messageBytes = new byte[length];
         buffer.get(messageBytes);
-
         return new Message(type, senderId, destinationId, messageBytes);
     }
 
     @Override
     public String toString() {
-        return String.format("Type: %s, Sender ID: %016X, Destination ID: %016X, Message: %s",
-                type.name(),
-                senderId,
-                destinationId,
-                getMessageContentAsString());
+        if (type == PacketType.KEY_EXCHANGE) {
+            return String.format("Type: %s, Sender ID: %016X, Destination ID: %016X, Message: [Public Key]",
+                    type.name(), senderId, destinationId);
+        } else {
+            return String.format("Type: %s, Sender ID: %016X, Destination ID: %016X, Message: %s",
+                    type.name(), senderId, destinationId, getMessageContentAsString());
+        }
     }
 }
