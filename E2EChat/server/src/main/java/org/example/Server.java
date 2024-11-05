@@ -1,22 +1,28 @@
 package org.example;
 
+import org.example.Message;
+import org.example.PacketSender;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.security.PublicKey;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Server {
 
     private static final int PORT = 12345;
+    private final HashMap<Long, ClientInfo> activeClients = new HashMap<>();
 
     public static void main(String[] args) {
-        HashSet<Integer> activeUserID = new HashSet<>();
+        new Server().start();
+    }
+
+    public void start() {
         try (DatagramSocket serverSocket = new DatagramSocket(PORT)) {
             System.out.println("Server started and listening on port " + PORT);
-
             byte[] buffer = new byte[1024];
 
             while (true) {
@@ -24,30 +30,55 @@ public class Server {
                 serverSocket.receive(receivePacket);
 
                 Message receivedMessage = Message.fromBytes(receivePacket.getData());
-                System.out.println("Received message from client: " + receivedMessage);
                 InetAddress clientAddress = receivePacket.getAddress();
                 int clientPort = receivePacket.getPort();
-                PacketSender packetSender = new PacketSender(serverSocket, clientAddress, clientPort);
 
-                handleMessage(receivedMessage, packetSender);
-//                if (receivedMessage.isKeyExchange()) {
-//                    byte[] publicKeyBytes = receivedMessage.getMessageContentAsBytes();
-//
-//                    PublicKey clientPublicKey = KeyUtil.convertToPublicKey(publicKeyBytes);
-//                    System.out.println("Received and stored public key from client: " + clientPublicKey);
-//
-//                    packetSender.sendAck(receivedMessage.getDestinationId(), receivedMessage.getSenderId(), "Public key received and stored.");
-//                }
+                handleMessage(receivedMessage, clientAddress, clientPort, serverSocket);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public static void handleMessage(Message m, PacketSender ps) throws IOException {
-        if(m.isHello()){
-            System.out.println("Received Hello");
-            ps.sendAck(1L,2L, "Hello");
+    private void handleMessage(Message message, InetAddress clientAddress, int clientPort, DatagramSocket socket) throws IOException {
+        PacketSender packetSender = new PacketSender(socket, clientAddress, clientPort);
+        long userId = message.getSenderId();
+
+        if (message.isHello()) {
+            activeClients.put(userId, new ClientInfo(clientAddress, clientPort));
+            System.out.println("Stored new client with userID: " + userId);
+
+            String ackMessage = "Hello acknowledged, client registered.";
+            packetSender.sendAck(0L, userId, ackMessage);
+        }else if(message.isOnlineQuery()){
+            String onlineUsers = activeClients.keySet().stream()
+                    .filter(id -> id != userId)
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            packetSender.sendAck(0L,userId,onlineUsers);
+        }
+        else if (message.isMessage()) {
+            long destinationId = message.getDestinationId();
+            ClientInfo recipient = activeClients.get(destinationId);
+            if (recipient != null) {
+                PacketSender forwardSender = new PacketSender(socket, recipient.address, recipient.port);
+                forwardSender.sendMessage(message.getSenderId(), destinationId, message.getMessageContentAsString());
+                System.out.println("Message forwarded to user ID: " + destinationId);
+            } else {
+                System.out.println("Destination user ID not found: " + destinationId);
+                packetSender.sendMessage(0L, message.getSenderId(), "Error: User not found.");
+            }
+        }
+    }
+
+    private static class ClientInfo {
+        InetAddress address;
+        int port;
+
+        ClientInfo(InetAddress address, int port) {
+            this.address = address;
+            this.port = port;
         }
     }
 }

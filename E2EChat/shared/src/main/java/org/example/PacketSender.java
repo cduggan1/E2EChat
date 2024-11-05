@@ -36,6 +36,11 @@ public class PacketSender {
         sendMessage(messagePacket);
     }
 
+    void sendOnlineQuery(long senderId, long destinationId) throws IOException {
+        Message messagePacket = new Message(Message.PacketType.ONLINE_QUERY, senderId,destinationId,"");
+        sendMessage(messagePacket);
+    }
+
     private void sendMessage(Message message) throws IOException {
         byte[] packetData = message.toBytes();
         DatagramPacket packet = new DatagramPacket(packetData, packetData.length, address, port);

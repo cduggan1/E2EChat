@@ -10,7 +10,8 @@ public class Message {
         ACK((byte) 2),
         MESSAGE((byte) 3),
         ERROR((byte) 4),
-        KEY_EXCHANGE((byte) 5);
+        KEY_EXCHANGE((byte) 5),
+        ONLINE_QUERY((byte) 6);
 
         private final byte type;
 
@@ -37,7 +38,6 @@ public class Message {
     private final long destinationId;
     private final byte[] messageContent;
 
-    // Constructor for String content
     public Message(PacketType type, long senderId, long destinationId, String messageContent) {
         this.type = type;
         this.senderId = senderId;
@@ -45,7 +45,6 @@ public class Message {
         this.messageContent = messageContent.getBytes(StandardCharsets.UTF_8);
     }
 
-    // Constructor for byte array content
     public Message(PacketType type, long senderId, long destinationId, byte[] messageContent) {
         this.type = type;
         this.senderId = senderId;
@@ -83,6 +82,10 @@ public class Message {
 
     public boolean isKeyExchange() {
         return this.type == PacketType.KEY_EXCHANGE;
+    }
+
+    public boolean isOnlineQuery(){
+        return this.type == PacketType.ONLINE_QUERY;
     }
 
     public String getMessageContentAsString() {
